@@ -4,6 +4,7 @@ import com.genrative.faqchatbot.dto.ChatRequest;
 import com.genrative.faqchatbot.dto.ChatResponse;
 import com.genrative.faqchatbot.entity.Message;
 import com.genrative.faqchatbot.entity.Session;
+import com.genrative.faqchatbot.enums.SupportRole;
 import com.genrative.faqchatbot.langchain.ChatModelProvider;
 import com.genrative.faqchatbot.langchain.ConversationMemory;
 import com.genrative.faqchatbot.langchain.RAGPipeline;
@@ -28,6 +29,7 @@ public class ChatService {
 
     public ChatResponse processMessage(ChatRequest request) {
         String sessionId = request.getSessionId();
+        SupportRole role = request.getRole() != null ? request.getRole() : SupportRole.HELP_DESK;
 
         log.info("Processing message for session: {}", sessionId);
 
@@ -43,22 +45,11 @@ public class ChatService {
         List<String> contexts = ragPipeline.retriveRelevantChunks(request.getMessage(), 5);
 
         // 4. Build prompt
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("You are a helpful customer support assistant.\n");
-        prompt.append("Use the knowledge base information to answer questions when relevant.\n\n");
-        prompt.append("Knowledge Base Information:\n");
-        if (contexts.isEmpty()) {
-            prompt.append("- No relevant knowledge base information found\n");
-        } else {
-            contexts.forEach(c -> prompt.append("- ").append(c).append("\n"));
-        }
-        prompt.append("\nConversation History:\n");
-        recent.forEach(m -> prompt.append(m.getSender()).append(": ").append(m.getContent()).append("\n"));
-        prompt.append("\nUser Question: ").append(request.getMessage());
-        prompt.append("\n\nAssistant: Please provide a helpful answer based on the knowledge base information above. If no relevant information is available, provide a general helpful response.");
+        String knowledgeBase = formatKnowledgeBase(contexts);
+        String conversationHistory = formatConversationHistory(recent);
 
         // 5. Generate AI response
-        String reply = chatModelProvider.generate(prompt.toString());
+        String reply = chatModelProvider.generateWithAgent(role,request.getMessage(),knowledgeBase,conversationHistory);
 
         // 6. Save bot message
         Message botMessage = Message.createBotMessage(sessionId, reply);
@@ -66,10 +57,48 @@ public class ChatService {
 
         // 7. Update session statistics
         updateSessionStats(session);
-
         log.info("Generated response for session: {}", sessionId);
 
-        return new ChatResponse(reply);
+        return ChatResponse.builder()
+                .reply(reply)
+                .agentRole(role)
+                .agentName(role.getDisplayname())
+                .escalationSuggested(detectEscalationSuggestion(reply))
+                .reasoning(String.valueOf(role.getAgentDefinition().getReasoning()))
+                .build();
+    }
+
+    private Boolean detectEscalationSuggestion(String reply) {
+        String[] escalationKeyWords = {"escalate","contact","specialist","advanced","complex"};
+        String lowerReply = reply.toLowerCase();
+
+        for (String keyword: escalationKeyWords){
+            if(lowerReply.contains(keyword)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String formatConversationHistory(List<Message> recent) {
+        if(recent.isEmpty()){
+            return "No previous conversation found";
+        }
+
+        StringBuilder history = new StringBuilder();
+        recent.forEach(h -> history.append(String.format("%s : %s",h.getSender(),h.getContent())));
+        return history.toString();
+    }
+
+    private String formatKnowledgeBase(List<String> contexts) {
+        if(contexts.isEmpty()){
+            return "No relevant knowledge base information found";
+        }
+        StringBuilder kb = new StringBuilder();
+        for(int i=0;i<contexts.size();i++){
+            kb.append(String.format("KB_%d: %s\n",i+1,contexts.get(i)));
+        }
+        return kb.toString();
     }
 
     public void resetSession(String sessionId) {
@@ -101,4 +130,6 @@ public class ChatService {
         session.updateActivity();
         sessionRepository.save(session);
     }
+
+
 }
