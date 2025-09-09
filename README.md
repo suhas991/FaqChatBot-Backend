@@ -1,161 +1,169 @@
-# 📚 FAQ Chatbot with Spring Boot + LangChain4j + Google Gemini
+# FAQ Chatbot - AI-Powered IT Support
 
-A **context-aware FAQ Chatbot** built with:
-
-* **Spring Boot (Java 17+)**
-* **LangChain4j (Gemini integration)** for GenAI responses
-* **H2 in-memory database** for storing chat history and knowledge base
-* **REST API** endpoints for chat interaction, session management, and escalation
+A smart **FAQ chatbot** built with **Spring Boot, MongoDB, and Google Gemini AI**, featuring **role-based agents** for specialized IT support.
 
 ---
 
 ## 🚀 Features
 
-* Chatbot powered by **Google Gemini API** (via LangChain4j).
-* **Context-aware conversations** stored per `sessionId`.
-* In-memory **H2 database** to persist chat messages & knowledge base.
-* **Reset API** to clear conversations for a session.
-* **Incident Escalation (planned)** – raise ServiceNow tickets when unresolved.
+* **Role-based AI Agents**
+  Choose from 4 support roles:
+
+  * *Help Desk*: Password resets, basic troubleshooting
+  * *Technical Troubleshooting*: Network & system issues
+  * *System Administration*: User/security management, servers
+  * *Infrastructure Management*: Capacity planning, disaster recovery
+
+* **Knowledge Base**: Search corporate IT knowledge
+
+* **Conversation Memory**: Keeps chat context across turns
+
+* **Incident Summarization**: Generates ServiceNow-ready tickets
+
+* **Powered by Gemini AI** via **LangChain4Java**
+
+---
+
+## 📋 Requirements
+
+* **Java 17+**
+* **Maven 3.8+**
+* **MongoDB** (local or cloud)
+* **Google AI API Key** (Gemini model)
+* *(Optional)* Qdrant/Milvus for semantic search
+
+---
+
+## ⚡ Quick Start
+
+1. **Clone & Setup**
+
+   ```bash
+   git clone <your-repo-url>
+   cd faq-chatbot
+   ```
+
+2. **Configure Database** (`application.yml`)
+
+   ```yaml
+   spring:
+     data:
+       mongodb:
+         uri: mongodb://localhost:27017/faqchatbot
+   ```
+
+3. **Start Dependencies**
+
+   ```bash
+   docker run -p 27017:27017 mongo       # MongoDB
+   docker run -p 6333:6333 qdrant/qdrant # Optional: Qdrant
+   ```
+
+4. **Run the App**
+
+   ```bash
+   mvn clean install
+   mvn spring-boot:run
+   ```
+
+Server: `http://localhost:8080`
+
+---
+
+## 🔗 API Overview
+
+### Chat
+
+* `GET /api/chat` → Health check
+* `POST /api/chat` → Chat with AI agent
+* `POST /api/chat/reset/{sessionId}` → Reset conversation
+
+### Agents
+
+* `GET /api/agents/roles` → List agent roles
+* `GET /api/agents/roles/{role}` → Get role details
+
+### Knowledge Base
+
+* `POST /api/knowledge-base/populate-sample` → Load sample data
+* `POST /api/knowledge-base/add` → Add entry
+* `GET /api/knowledge-base/search` → Search
+
+---
+
+## 💬 Example Chat Request
+
+```json
+{
+  "sessionId": "session-123",
+  "message": "My computer won't connect to the internet",
+  "role": "TECHNICAL_TROUBLESHOOTING",
+  "priority": "HIGH"
+}
+```
+
+---
+
+## 🧪 Testing with Postman
+
+1. `GET http://localhost:8080/api/chat` – Health check
+2. `POST http://localhost:8080/api/knowledge-base/populate-sample` – Load data
+3. `GET http://localhost:8080/api/agents/roles` – List roles
+4. `POST http://localhost:8080/api/chat` – Example chat:
+
+   ```json
+   {
+     "sessionId": "test-session",
+     "message": "I forgot my password",
+     "role": "HELP_DESK"
+   }
+   ```
+
+---
+
+## 🔮 Roadmap
+
+* **Phase 2**: Semantic Search (Qdrant/Milvus, embeddings)
+* **Phase 3**: Agent Actions (ServiceNow integration, system diagnostics, escalation)
+* **Phase 4**: Frontend (React + Vite, role selector, chat history)
+
+---
+
+## 🏗️ Architecture
+
+```
+Frontend (React) → Spring Boot API → MongoDB
+                                  ↓
+                    Google Gemini AI ← Knowledge Base
+                                  ↓
+                    Vector DB (Future: Qdrant/Milvus)
+```
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Backend:** Spring Boot 3.x, Java 17
-* **AI Integration:** LangChain4j `google-ai-gemini` module
-* **Database:** H2 (in-memory) with Spring Data JPA
-* **Build Tool:** Maven
+* **Backend**: Spring Boot 3.x (Java 17)
+* **Database**: MongoDB
+* **AI**: Google Gemini (LangChain4Java)
+* **Build**: Maven
+* **Containerization**: Docker
+* **Search**: Text-based (Vector search planned)
 
 ---
 
-## 📂 Project Structure
 
-```
-src/main/java/com/genrative/faqchatbot
- ┣ config/
- ┃ ┗ GeminiConfig.java          # Gemini model configuration
- ┣ controller/
- ┃ ┗ ChatController.java        # REST APIs for chat
- ┣ dto/
- ┃ ┣ ChatRequest.java
- ┃ ┗ ChatResponse.java
- ┣ entity/
- ┃ ┣ Message.java               # Stores chat messages
- ┃ ┣ KnowledgeBase.java         # FAQ knowledge base entries
- ┃ ┗ ChatHistory.java           # (Optional aggregated history)
- ┣ repository/
- ┃ ┣ MessageRepository.java
- ┃ ┗ KnowledgeBaseRepository.java
- ┣ service/
- ┃ ┗ ChatService.java           # Chat + session management
- ┗ FaqChatbotApplication.java   # Spring Boot starter
-```
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create a branch (`git checkout -b feature/your-feature`)
+3. Commit (`git commit -m 'Add feature'`)
+4. Push (`git push origin feature/your-feature`)
+5. Open a PR
 
 ---
 
-## ⚙️ Setup & Installation
+## 📄 License
+MIT License
 
-### 1. Clone Repo
-
-```bash
-git clone https://github.com/your-username/faq-chatbot.git
-cd faq-chatbot
-```
-
-### 2. Add Google Gemini API Key
-
-In `application.properties`:
-
-```properties
-spring.application.name=faqchatbot
-
-# H2 Database
-spring.datasource.url=jdbc:h2:mem:faqdb
-spring.datasource.driverClassName=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
-spring.jpa.hibernate.ddl-auto=update
-spring.h2.console.enabled=true
-
-# Gemini API
-GEMINI_API_KEY=your_api_key_here
-```
-
-### 3. Build & Run
-
-```bash
-mvn clean install
-mvn spring-boot:run
-```
-
----
-
-## 📡 API Endpoints
-
-### 1️⃣ Chat with Bot
-
-**POST** `/api/chat`
-Request:
-
-```json
-{
-  "sessionId": "session-123",
-  "message": "How do I reset my password?"
-}
-```
-
-Response:
-
-```json
-{
-  "reply": "Assistant: To reset your password, please enter your email..."
-}
-```
-
----
-
-### 2️⃣ Reset Chat Session
-
-**DELETE** `/api/chat/reset/{sessionId}`
-Example:
-
-```
-DELETE http://localhost:8080/api/chat/reset/session-123
-```
-
-Response:
-
-```json
-"Session session-123 cleared."
-```
-
----
-
-### 3️⃣ (Optional) View H2 Console
-
-```
-http://localhost:8080/h2-console
-```
-
-JDBC URL: `jdbc:h2:mem:faqdb`
-
----
-
-## 🗺️ Roadmap
-
-* [x] Chat with context using LangChain4j + Gemini
-* [x] Session-based chat history in H2
-* [x] Reset API to clear sessions
-* [ ] Incident escalation → auto-generate ServiceNow tickets with GenAI
-* [ ] React + Vite frontend integration
-* [ ] User authentication & role-based access control
-* [ ] Knowledge base CRUD APIs with admin panel
-* [ ] Multi-tenant support (per-organization FAQs)
-* [ ] Integration with external APIs (email, Slack, Teams)
-* [ ] Analytics dashboard for chat usage & ticket trends
-
----
-
-## 📜 License
-
-MIT License © 2025
+**Built with ❤️ using Spring Boot & AI**
